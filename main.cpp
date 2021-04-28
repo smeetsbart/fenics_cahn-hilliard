@@ -73,9 +73,9 @@ int main(int argc, char* argv[])
   dolfin::init(argc, argv);
 
   //Resolution of the mesh in x,y,z:
-  unsigned dx = 16;  //Will be length 1 (ONE)
-  unsigned dy = 16;  //Will be length dy/dx
-  unsigned dz = 4;   //Will be length dz/dx
+  unsigned dx = 24;  //Will be length 1 (ONE)
+  unsigned dy = 24;  //Will be length dy/dx
+  unsigned dz = 6;   //Will be length dz/dx
 
   // Mesh
   auto mesh = std::make_shared<Mesh>(
