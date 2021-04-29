@@ -32,10 +32,12 @@ if (HAVE_NO_MULTLINE)
 endif()
 
 # Executable
-add_executable(${PROJECT_NAME} CahnHilliard2D.cpp CahnHilliard3D.cpp main.cpp)
+add_executable(${PROJECT_NAME} CahnHilliard2D.cpp CahnHilliard3D.cpp open.cpp)
+add_executable("${PROJECT_NAME}-dirichlet" CahnHilliard2D.cpp CahnHilliard3D.cpp dirichlet.cpp)
 
 # Target libraries
 target_link_libraries(${PROJECT_NAME} dolfin)
+target_link_libraries("${PROJECT_NAME}-dirichlet" dolfin)
 
 # Test targets
 set(test_parameters -np 3 ${MPIEXEC_PARAMS} "./${PROJECT_NAME}")

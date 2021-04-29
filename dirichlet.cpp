@@ -10,6 +10,7 @@
 #include <dolfin.h>
 #include "CahnHilliard2D.h"
 #include "CahnHilliard3D.h"
+#include <cmath>
 
 using namespace dolfin;
 
@@ -25,10 +26,12 @@ public:
   void eval(Array<double>& values, const Array<double>& x) const
   {
     double c0 = 0.3;//Sets the base concentration
-    double cr = 0.05;//Sets the initial random perturbation
+    double cr = 0.075;//Sets the initial random perturbation
+    double lbc = 0.10;
 
-    double randsymm = 2*(1-dolfin::rand());//Symmetric random number between -1 and 1
+    double randsymm = 2*(dolfin::rand()-1);//Symmetric random number between -1 and 1
     values[0]= c0 + cr*randsymm;
+    values[0]= values[0] * (1 - std::exp( -x[2]/lbc ));
     values[1]= 0.0;
   }
 
@@ -50,21 +53,29 @@ class CahnHilliardEquation : public NonlinearProblem
 
     // Constructor
     CahnHilliardEquation(std::shared_ptr<const Form> F,
-                         std::shared_ptr<const Form> J) : _F(F), _J(J) {}
+                         std::shared_ptr<const Form> J,
+                         std::shared_ptr<const DirichletBC> bc) : _F(F), _J(J), _bc(bc) {}
 
     // User defined residual vector
     void F(GenericVector& b, const GenericVector& x)
-    { assemble(b, *_F); }
+    {
+        assemble(b, *_F);
+        _bc->apply( b, x );
+    }
 
     // User defined assemble of Jacobian
     void J(GenericMatrix& A, const GenericVector& x)
-    { assemble(A, *_J); }
+    {
+        assemble(A, *_J);
+        _bc->apply( A );
+    }
 
   private:
 
     // Forms
     std::shared_ptr<const Form> _F;
     std::shared_ptr<const Form> _J;
+    std::shared_ptr<const DirichletBC> _bc;
 };
 
 
@@ -73,9 +84,9 @@ int main(int argc, char* argv[])
   dolfin::init(argc, argv);
 
   //Resolution of the mesh in x,y,z:
-  unsigned dx = 28;  //Will be length 1 (ONE)
-  unsigned dy = 28;  //Will be length dy/dx
-  unsigned dz = 7;   //Will be length dz/dx
+  unsigned dx = 52;  //Will be length 1 (ONE)
+  unsigned dy = 52;  //Will be length dy/dx
+  unsigned dz = 52;  //Will be length dz/dx
 
   // Mesh
   auto mesh = std::make_shared<Mesh>(
@@ -90,6 +101,7 @@ int main(int argc, char* argv[])
       (*i) *= dn / static_cast<double>(dx);//Rescale the unit cube to desired size based on resolution
       jv++;
   }
+  std::cout << "Generated mesh with " << jv/3 << " vertices" << std::endl;
 
   // Create function space and forms, depending on spatial dimension
   // of the mesh
@@ -115,8 +127,9 @@ int main(int argc, char* argv[])
   auto u0 = std::make_shared<Function>(V);
   auto u = std::make_shared<Function>(V);
 
+  auto ubc = std::make_shared<Constant>(0.0, 0.0);
   auto boundary = std::make_shared<DirichletBoundary>();
-  DirichletBC bc(V, u0, boundary);
+  auto bc = std::make_shared<DirichletBC>(V, ubc, boundary);
 
   // Set solution to intitial condition
   InitialConditions u_initial(mesh->mpi_comm());
@@ -126,7 +139,7 @@ int main(int argc, char* argv[])
   // Time stepping and model parameters
   auto dt = std::make_shared<Constant>(5.0e-6);//Simulation timestep
   auto theta = std::make_shared<Constant>(0.5);//Determines integration type. Set to 0.5
-  auto lambda = std::make_shared<Constant>(20e-3);//This is Gamma from the wiki of the Cahn-Hilliard equations!
+  auto lambda = std::make_shared<Constant>(6e-3);//This is Gamma from the wiki of the Cahn-Hilliard equations!
 
   // Collect coefficient into groups
   std::map<std::string, std::shared_ptr<const GenericFunction>> coefficients
@@ -141,14 +154,14 @@ int main(int argc, char* argv[])
   F->set_coefficients(coefficients_F);
 
   double t = 0.0;
-  double T = 200*(*dt);
+  double T = 750*(*dt);
 
   // Create user-defined nonlinear problem
-  CahnHilliardEquation cahn_hilliard(F, J);
+  CahnHilliardEquation cahn_hilliard(F, J, bc);
 
   // Create nonlinear solver and set parameters
   NewtonSolver newton_solver;
-  newton_solver.parameters["linear_solver"] = "lu";
+  newton_solver.parameters["linear_solver"] = "gmres";
   newton_solver.parameters["convergence_criterion"] = "incremental";
   newton_solver.parameters["maximum_iterations"] = 10;
   newton_solver.parameters["relative_tolerance"] = 5e-6;
