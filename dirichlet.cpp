@@ -25,9 +25,9 @@ public:
   //To do: Maybe generate 'values' based on some kind of 'seeding' algorithm (we can make it 'x' dependent!)
   void eval(Array<double>& values, const Array<double>& x) const
   {
-    double c0 = 0.3;//Sets the base concentration
-    double cr = 0.075;//Sets the initial random perturbation
-    double lbc = 0.10;
+    double c0 = 0.50;//Sets the base concentration
+    double cr = 0.05;//Sets the initial random perturbation
+    double lbc = 0.075;
 
     double randsymm = 2*(dolfin::rand()-1);//Symmetric random number between -1 and 1
     values[0]= c0 + cr*randsymm;
@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
   //Resolution of the mesh in x,y,z:
   unsigned dx = 52;  //Will be length 1 (ONE)
   unsigned dy = 52;  //Will be length dy/dx
-  unsigned dz = 52;  //Will be length dz/dx
+  unsigned dz = 38;  //Will be length dz/dx
 
   // Mesh
   auto mesh = std::make_shared<Mesh>(
@@ -137,9 +137,9 @@ int main(int argc, char* argv[])
   *u = u_initial;
 
   // Time stepping and model parameters
-  auto dt = std::make_shared<Constant>(5.0e-6);//Simulation timestep
+  auto dt = std::make_shared<Constant>(1.0e-6);//Simulation timestep
   auto theta = std::make_shared<Constant>(0.5);//Determines integration type. Set to 0.5
-  auto lambda = std::make_shared<Constant>(6e-3);//This is Gamma from the wiki of the Cahn-Hilliard equations!
+  auto lambda = std::make_shared<Constant>(5e-3);//This is Gamma from the wiki of the Cahn-Hilliard equations!
 
   // Collect coefficient into groups
   std::map<std::string, std::shared_ptr<const GenericFunction>> coefficients
@@ -163,8 +163,8 @@ int main(int argc, char* argv[])
   NewtonSolver newton_solver;
   newton_solver.parameters["linear_solver"] = "gmres";
   newton_solver.parameters["convergence_criterion"] = "incremental";
-  newton_solver.parameters["maximum_iterations"] = 10;
-  newton_solver.parameters["relative_tolerance"] = 5e-6;
+  newton_solver.parameters["maximum_iterations"] = 25;
+  newton_solver.parameters["relative_tolerance"] = 2e-6;
   newton_solver.parameters["absolute_tolerance"] = 1e-13;
 
   // Save initial condition to file
